@@ -1,0 +1,6 @@
+---
+description: Apply security best practices.
+globs: **/*.*
+---
+- Apply security best practices (e.g., CSRF protection, SQL injection protection, XSS prevention).
+- Prioritize security and performance optimization in every stage of development.
