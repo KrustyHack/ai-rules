@@ -75,6 +75,11 @@ fi
 
 echo -e "${GREEN}✅ Repository cloned successfully.${NC}"
 
+# Debug: Show the actual content of the rules directory
+echo -e "${BLUE}🔍 Debug: Rules directory content:${NC}"
+ls -la "$RULES_PATH"
+echo ""
+
 # Count items in rules directory
 ITEMS_COUNT=$(find "$RULES_PATH" -type f | wc -l)
 echo -e "${BLUE}📁 Found $ITEMS_COUNT files in rules directory${NC}"
@@ -82,6 +87,7 @@ echo -e "${BLUE}📁 Found $ITEMS_COUNT files in rules directory${NC}"
 # Display list of directories/files to be installed
 echo -e "${BLUE}   Content to install:${NC}"
 for item in "$RULES_PATH"/*; do
+    echo -e "${BLUE}🔍 Debug: Checking item: $item${NC}"
     if [[ -e "$item" ]]; then
         basename_item=$(basename "$item")
         if [[ -d "$item" ]]; then
@@ -90,6 +96,8 @@ for item in "$RULES_PATH"/*; do
         else
             echo -e "   • ${YELLOW}$basename_item${NC}"
         fi
+    else
+        echo -e "${RED}🔍 Debug: Item does not exist: $item${NC}"
     fi
 done
 echo ""
@@ -100,9 +108,12 @@ COPIED_ITEMS=0
 CONFLICTS=0
 
 for item in "$RULES_PATH"/*; do
+    echo -e "${BLUE}🔍 Debug: Processing item for copy: $item${NC}"
     if [[ -e "$item" ]]; then
         item_name=$(basename "$item")
         target_path="$ORIGINAL_DIR/$item_name"
+        
+        echo -e "${BLUE}🔍 Debug: Will copy $item to $target_path${NC}"
         
         # Check if item already exists
         if [[ -e "$target_path" ]]; then
@@ -124,6 +135,8 @@ for item in "$RULES_PATH"/*; do
         else
             echo -e "${RED}   ❌ Failed to install $item_name${NC}"
         fi
+    else
+        echo -e "${RED}🔍 Debug: Item does not exist for copy: $item${NC}"
     fi
 done
 
