@@ -12,7 +12,7 @@ REPO_URL="https://github.com/KrustyHack/ai-rules.git"
 REPO_NAME="ai-rules"
 RULES_SOURCE_DIR="rules"
 
-# Store the original directory
+# Store the original directory at the very beginning
 ORIGINAL_DIR="$(pwd)"
 
 echo -e "${BLUE}=== AI Rules Installer for Cursor ===${NC}"
@@ -69,6 +69,7 @@ RULES_PATH="${TEMP_DIR}/${REPO_NAME}/${RULES_SOURCE_DIR}"
 # Check if rules directory exists
 if [[ ! -d "$RULES_PATH" ]]; then
     echo -e "${RED}❌ Rules directory not found in the repository.${NC}"
+    echo -e "   Expected path: $RULES_PATH"
     exit 1
 fi
 
@@ -93,10 +94,7 @@ for item in "$RULES_PATH"/*; do
 done
 echo ""
 
-# Return to original directory
-cd "$ORIGINAL_DIR" || exit 1
-
-# Copy rules content to current directory
+# Copy rules content to original directory
 echo -e "${BLUE}📋 Installing files...${NC}"
 COPIED_ITEMS=0
 CONFLICTS=0
@@ -120,9 +118,12 @@ for item in "$RULES_PATH"/*; do
         fi
         
         # Copy the item (file or directory)
-        cp -r "$item" "$target_path"
-        echo -e "${GREEN}   ✅ $item_name installed${NC}"
-        ((COPIED_ITEMS++))
+        if cp -r "$item" "$target_path" 2>/dev/null; then
+            echo -e "${GREEN}   ✅ $item_name installed${NC}"
+            ((COPIED_ITEMS++))
+        else
+            echo -e "${RED}   ❌ Failed to install $item_name${NC}"
+        fi
     fi
 done
 
@@ -135,6 +136,16 @@ if [[ $CONFLICTS -gt 0 ]]; then
 fi
 echo -e "   • Installation directory: ${YELLOW}$ORIGINAL_DIR${NC}"
 echo ""
+
+# Verify installation
+if [[ -d "$ORIGINAL_DIR/.cursor" ]]; then
+    rule_files_count=$(find "$ORIGINAL_DIR/.cursor" -name "*.mdc" | wc -l)
+    echo -e "${GREEN}✅ Verification: Found $rule_files_count .mdc files in .cursor directory${NC}"
+else
+    echo -e "${YELLOW}⚠️  Warning: .cursor directory not found in installation path${NC}"
+fi
+echo ""
+
 echo -e "${BLUE}💡 To use these rules in Cursor:${NC}"
 echo -e "   1. Restart Cursor"
 echo -e "   2. Rules will be automatically loaded from the installed directories"
