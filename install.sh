@@ -12,6 +12,9 @@ REPO_URL="https://github.com/KrustyHack/ai-rules.git"
 REPO_NAME="ai-rules"
 RULES_SOURCE_DIR="rules"
 
+# Store the original directory
+ORIGINAL_DIR="$(pwd)"
+
 echo -e "${BLUE}=== AI Rules Installer for Cursor ===${NC}"
 echo ""
 
@@ -35,7 +38,7 @@ fi
 # Display installation information
 echo -e "${BLUE}📋 Installation information:${NC}"
 echo -e "   • Source repo: ${YELLOW}$REPO_URL${NC}"
-echo -e "   • Destination: ${YELLOW}$(pwd)${NC}"
+echo -e "   • Destination: ${YELLOW}$ORIGINAL_DIR${NC}"
 echo -e "   • Content: ${YELLOW}Rules and configuration folders${NC}"
 echo ""
 
@@ -60,10 +63,11 @@ if ! git clone "$REPO_URL" "$REPO_NAME" 2>/dev/null; then
     exit 1
 fi
 
-cd "$REPO_NAME" || exit 1
+# Set the rules source path
+RULES_PATH="${TEMP_DIR}/${REPO_NAME}/${RULES_SOURCE_DIR}"
 
 # Check if rules directory exists
-if [[ ! -d "$RULES_SOURCE_DIR" ]]; then
+if [[ ! -d "$RULES_PATH" ]]; then
     echo -e "${RED}❌ Rules directory not found in the repository.${NC}"
     exit 1
 fi
@@ -71,12 +75,12 @@ fi
 echo -e "${GREEN}✅ Repository cloned successfully.${NC}"
 
 # Count items in rules directory
-ITEMS_COUNT=$(find "$RULES_SOURCE_DIR" -type f | wc -l)
+ITEMS_COUNT=$(find "$RULES_PATH" -type f | wc -l)
 echo -e "${BLUE}📁 Found $ITEMS_COUNT files in rules directory${NC}"
 
 # Display list of directories/files to be installed
 echo -e "${BLUE}   Content to install:${NC}"
-for item in "$RULES_SOURCE_DIR"/*; do
+for item in "$RULES_PATH"/*; do
     if [[ -e "$item" ]]; then
         basename_item=$(basename "$item")
         if [[ -d "$item" ]]; then
@@ -90,17 +94,17 @@ done
 echo ""
 
 # Return to original directory
-cd - > /dev/null || exit 1
+cd "$ORIGINAL_DIR" || exit 1
 
 # Copy rules content to current directory
 echo -e "${BLUE}📋 Installing files...${NC}"
 COPIED_ITEMS=0
 CONFLICTS=0
 
-for item in "${TEMP_DIR}/${REPO_NAME}/${RULES_SOURCE_DIR}"/*; do
+for item in "$RULES_PATH"/*; do
     if [[ -e "$item" ]]; then
         item_name=$(basename "$item")
-        target_path="$(pwd)/$item_name"
+        target_path="$ORIGINAL_DIR/$item_name"
         
         # Check if item already exists
         if [[ -e "$target_path" ]]; then
@@ -129,7 +133,7 @@ echo -e "   • Items installed: ${GREEN}$COPIED_ITEMS${NC}"
 if [[ $CONFLICTS -gt 0 ]]; then
     echo -e "   • Items skipped: ${YELLOW}$CONFLICTS${NC}"
 fi
-echo -e "   • Installation directory: ${YELLOW}$(pwd)${NC}"
+echo -e "   • Installation directory: ${YELLOW}$ORIGINAL_DIR${NC}"
 echo ""
 echo -e "${BLUE}💡 To use these rules in Cursor:${NC}"
 echo -e "   1. Restart Cursor"
