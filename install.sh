@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 # Configuration
 REPO_URL="https://github.com/KrustyHack/ai-rules.git"
 REPO_NAME="ai-rules"
-CURSOR_RULES_DIR=".cursor/rules"
+RULES_SOURCE_DIR="rules"
 
 echo -e "${BLUE}=== AI Rules Installer for Cursor ===${NC}"
 echo ""
@@ -35,8 +35,8 @@ fi
 # Display installation information
 echo -e "${BLUE}📋 Installation information:${NC}"
 echo -e "   • Source repo: ${YELLOW}$REPO_URL${NC}"
-echo -e "   • Destination: ${YELLOW}$(pwd)/$CURSOR_RULES_DIR${NC}"
-echo -e "   • Files to install: ${YELLOW}All .mdc files from the repo${NC}"
+echo -e "   • Destination: ${YELLOW}$(pwd)${NC}"
+echo -e "   • Content: ${YELLOW}Rules and configuration folders${NC}"
 echo ""
 
 # Ask for confirmation
@@ -62,64 +62,78 @@ fi
 
 cd "$REPO_NAME" || exit 1
 
-# Count .mdc files
-MDC_FILES=(*.mdc)
-if [[ ! -e "${MDC_FILES[0]}" ]]; then
-    echo -e "${RED}❌ No .mdc files found in the repository.${NC}"
+# Check if rules directory exists
+if [[ ! -d "$RULES_SOURCE_DIR" ]]; then
+    echo -e "${RED}❌ Rules directory not found in the repository.${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}✅ Repository cloned successfully.${NC}"
-echo -e "${BLUE}📁 Found .mdc files: ${#MDC_FILES[@]}${NC}"
 
-# Display list of files to be installed
-echo -e "${BLUE}   Files to install:${NC}"
-for file in "${MDC_FILES[@]}"; do
-    echo -e "   • ${YELLOW}$file${NC}"
+# Count items in rules directory
+ITEMS_COUNT=$(find "$RULES_SOURCE_DIR" -type f | wc -l)
+echo -e "${BLUE}📁 Found $ITEMS_COUNT files in rules directory${NC}"
+
+# Display list of directories/files to be installed
+echo -e "${BLUE}   Content to install:${NC}"
+for item in "$RULES_SOURCE_DIR"/*; do
+    if [[ -e "$item" ]]; then
+        basename_item=$(basename "$item")
+        if [[ -d "$item" ]]; then
+            file_count=$(find "$item" -type f | wc -l)
+            echo -e "   • ${YELLOW}$basename_item/${NC} (${file_count} files)"
+        else
+            echo -e "   • ${YELLOW}$basename_item${NC}"
+        fi
+    fi
 done
 echo ""
 
 # Return to original directory
 cd - > /dev/null || exit 1
 
-# Create .cursor/rules directory if it doesn't exist
-echo -e "${BLUE}📂 Creating $CURSOR_RULES_DIR directory...${NC}"
-mkdir -p "$CURSOR_RULES_DIR"
-
-# Copy .mdc files
+# Copy rules content to current directory
 echo -e "${BLUE}📋 Installing files...${NC}"
-INSTALLED_COUNT=0
+COPIED_ITEMS=0
+CONFLICTS=0
 
-for file in "${TEMP_DIR}/${REPO_NAME}"/*.mdc; do
-    if [[ -f "$file" ]]; then
-        filename=$(basename "$file")
-        target_path="$CURSOR_RULES_DIR/$filename"
+for item in "${TEMP_DIR}/${REPO_NAME}/${RULES_SOURCE_DIR}"/*; do
+    if [[ -e "$item" ]]; then
+        item_name=$(basename "$item")
+        target_path="$(pwd)/$item_name"
         
-        # Check if file already exists
-        if [[ -f "$target_path" ]]; then
-            echo -e "${YELLOW}⚠️  File $filename already exists. Replace? (y/N)${NC}"
+        # Check if item already exists
+        if [[ -e "$target_path" ]]; then
+            echo -e "${YELLOW}⚠️  $item_name already exists. Replace? (y/N)${NC}"
             read -r replace
             if [[ ! "$replace" =~ ^[Yy]$ ]]; then
-                echo -e "   ⏭️  File $filename skipped."
+                echo -e "   ⏭️  $item_name skipped."
+                ((CONFLICTS++))
                 continue
             fi
+            # Remove existing item before copying
+            rm -rf "$target_path"
         fi
         
-        cp "$file" "$target_path"
-        echo -e "${GREEN}   ✅ $filename installed${NC}"
-        ((INSTALLED_COUNT++))
+        # Copy the item (file or directory)
+        cp -r "$item" "$target_path"
+        echo -e "${GREEN}   ✅ $item_name installed${NC}"
+        ((COPIED_ITEMS++))
     fi
 done
 
 echo ""
 echo -e "${GREEN}🎉 Installation completed!${NC}"
 echo -e "${BLUE}📊 Summary:${NC}"
-echo -e "   • Files installed: ${GREEN}$INSTALLED_COUNT${NC}"
-echo -e "   • Destination folder: ${YELLOW}$(pwd)/$CURSOR_RULES_DIR${NC}"
+echo -e "   • Items installed: ${GREEN}$COPIED_ITEMS${NC}"
+if [[ $CONFLICTS -gt 0 ]]; then
+    echo -e "   • Items skipped: ${YELLOW}$CONFLICTS${NC}"
+fi
+echo -e "   • Installation directory: ${YELLOW}$(pwd)${NC}"
 echo ""
 echo -e "${BLUE}💡 To use these rules in Cursor:${NC}"
 echo -e "   1. Restart Cursor"
-echo -e "   2. Rules will be automatically loaded from $CURSOR_RULES_DIR"
+echo -e "   2. Rules will be automatically loaded from the installed directories"
 echo -e "   3. You can verify in Cursor settings > Rules"
 echo ""
 echo -e "${GREEN}✨ Enjoy your new AI rules!${NC}" 

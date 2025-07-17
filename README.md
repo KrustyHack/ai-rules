@@ -21,14 +21,9 @@ bash <(curl -sSL https://raw.githubusercontent.com/KrustyHack/ai-rules/main/inst
 
 ## Manual Installation
 
-1. Download the `.mdc` files from this repository
-2. Copy them to your project's `.cursor/rules/` directory
-
-## Requirements
-
-- Git installed
-- Cursor IDE
-- Internet connection
+1. Download the `rules/` directory from this repository
+2. Copy its contents to your project root directory
+3. This will create the `.cursor/` folder structure with all rules
 
 ## Usage
 
