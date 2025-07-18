@@ -64,7 +64,7 @@ alwaysApply: false
 
 ## Dependencies
 - Pin dependency versions
-- Use poetry for dependencies
+- Use uv (https://github.com/astral-sh/uv) for dependencies
 - Separate dev dependencies
 - Use proper package versions
 - Regularly update dependencies
