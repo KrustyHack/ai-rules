@@ -147,47 +147,97 @@ echo -e "${BLUE}📋 Installing files...${NC}"
 COPIED_ITEMS=0
 CONFLICTS=0
 
-while IFS= read -r -d '' item; do
-    if [[ -e "$item" ]]; then
-        item_name=$(basename "$item")
-        target_path="$ORIGINAL_DIR/$item_name"
-        
-        # Track if this is an update
-        IS_UPDATE=false
-        
-        # Check if item already exists
-        if [[ -e "$target_path" ]]; then
-            IS_UPDATE=true
-            if [[ "$FORCE_UPDATE" == true ]]; then
-                echo -e "${YELLOW}🔄 $item_name already exists - updating...${NC}"
-                # Remove existing item before copying
-                rm -rf "$target_path"
+# Check if the source contains a .cursor directory structure
+if [[ -d "$RULES_PATH/.cursor/rules/ack" ]]; then
+    # Install specific ack directory only
+    echo -e "${BLUE}   Installing Cursor rules (ack directory only)...${NC}"
+    
+    # Create .cursor/rules directory if it doesn't exist
+    mkdir -p "$ORIGINAL_DIR/.cursor/rules"
+    
+    # Handle the ack directory specifically
+    ACK_SOURCE="$RULES_PATH/.cursor/rules/ack"
+    ACK_TARGET="$ORIGINAL_DIR/.cursor/rules/ack"
+    
+    # Track if this is an update
+    IS_UPDATE=false
+    
+    if [[ -e "$ACK_TARGET" ]]; then
+        IS_UPDATE=true
+        if [[ "$FORCE_UPDATE" == true ]]; then
+            echo -e "${YELLOW}🔄 .cursor/rules/ack already exists - updating...${NC}"
+            # Remove existing ack directory
+            rm -rf "$ACK_TARGET"
+        else
+            echo -e "${YELLOW}⚠️  .cursor/rules/ack already exists. Replace? (y/N)${NC}"
+            read -r replace
+            if [[ ! "$replace" =~ ^[Yy]$ ]]; then
+                echo -e "   ⏭️  .cursor/rules/ack skipped."
+                ((CONFLICTS++))
             else
-                echo -e "${YELLOW}⚠️  $item_name already exists. Replace? (y/N)${NC}"
-                read -r replace
-                if [[ ! "$replace" =~ ^[Yy]$ ]]; then
-                    echo -e "   ⏭️  $item_name skipped."
-                    ((CONFLICTS++))
-                    continue
-                fi
-                # Remove existing item before copying
-                rm -rf "$target_path"
+                # Remove existing ack directory
+                rm -rf "$ACK_TARGET"
             fi
         fi
-        
-        # Copy the item (file or directory)
-        if cp -r "$item" "$target_path" 2>/dev/null; then
+    fi
+    
+    # Copy the ack directory if not skipped
+    if [[ ! -e "$ACK_TARGET" ]]; then
+        if cp -r "$ACK_SOURCE" "$ACK_TARGET" 2>/dev/null; then
             if [[ "$IS_UPDATE" == true ]]; then
-                echo -e "${GREEN}   ✅ $item_name updated${NC}"
+                echo -e "${GREEN}   ✅ .cursor/rules/ack updated${NC}"
             else
-                echo -e "${GREEN}   ✅ $item_name installed${NC}"
+                echo -e "${GREEN}   ✅ .cursor/rules/ack installed${NC}"
             fi
             ((COPIED_ITEMS++))
         else
-            echo -e "${RED}   ❌ Failed to install $item_name${NC}"
+            echo -e "${RED}   ❌ Failed to install .cursor/rules/ack${NC}"
         fi
     fi
-done < <(find "$RULES_PATH" -maxdepth 1 -mindepth 1 -print0)
+else
+    # Fallback to old behavior for other file structures
+    while IFS= read -r -d '' item; do
+        if [[ -e "$item" ]]; then
+            item_name=$(basename "$item")
+            target_path="$ORIGINAL_DIR/$item_name"
+            
+            # Track if this is an update
+            IS_UPDATE=false
+            
+            # Check if item already exists
+            if [[ -e "$target_path" ]]; then
+                IS_UPDATE=true
+                if [[ "$FORCE_UPDATE" == true ]]; then
+                    echo -e "${YELLOW}🔄 $item_name already exists - updating...${NC}"
+                    # Remove existing item before copying
+                    rm -rf "$target_path"
+                else
+                    echo -e "${YELLOW}⚠️  $item_name already exists. Replace? (y/N)${NC}"
+                    read -r replace
+                    if [[ ! "$replace" =~ ^[Yy]$ ]]; then
+                        echo -e "   ⏭️  $item_name skipped."
+                        ((CONFLICTS++))
+                        continue
+                    fi
+                    # Remove existing item before copying
+                    rm -rf "$target_path"
+                fi
+            fi
+            
+            # Copy the item (file or directory)
+            if cp -r "$item" "$target_path" 2>/dev/null; then
+                if [[ "$IS_UPDATE" == true ]]; then
+                    echo -e "${GREEN}   ✅ $item_name updated${NC}"
+                else
+                    echo -e "${GREEN}   ✅ $item_name installed${NC}"
+                fi
+                ((COPIED_ITEMS++))
+            else
+                echo -e "${RED}   ❌ Failed to install $item_name${NC}"
+            fi
+        fi
+    done < <(find "$RULES_PATH" -maxdepth 1 -mindepth 1 -print0)
+fi
 
 echo ""
 echo -e "${GREEN}🎉 Installation completed!${NC}"
@@ -200,7 +250,10 @@ echo -e "   • Installation directory: ${YELLOW}$ORIGINAL_DIR${NC}"
 echo ""
 
 # Verify installation
-if [[ -d "$ORIGINAL_DIR/.cursor" ]]; then
+if [[ -d "$ORIGINAL_DIR/.cursor/rules/ack" ]]; then
+    rule_files_count=$(find "$ORIGINAL_DIR/.cursor/rules/ack" -name "*.mdc" | wc -l)
+    echo -e "${GREEN}✅ Verification: Found $rule_files_count .mdc files in .cursor/rules/ack directory${NC}"
+elif [[ -d "$ORIGINAL_DIR/.cursor" ]]; then
     rule_files_count=$(find "$ORIGINAL_DIR/.cursor" -name "*.mdc" | wc -l)
     echo -e "${GREEN}✅ Verification: Found $rule_files_count .mdc files in .cursor directory${NC}"
 else
