@@ -12,6 +12,38 @@ REPO_URL="https://github.com/KrustyHack/ai-rules.git"
 REPO_NAME="ai-rules"
 RULES_SOURCE_DIR="rules"
 
+# Default behavior flags
+FORCE_UPDATE=false
+UPDATE_MODE=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -f|--force)
+            FORCE_UPDATE=true
+            shift
+            ;;
+        -u|--update)
+            UPDATE_MODE=true
+            FORCE_UPDATE=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [OPTIONS]"
+            echo "Options:"
+            echo "  -f, --force    Force update without confirmation"
+            echo "  -u, --update   Update mode - same as --force but clearer intent"
+            echo "  -h, --help     Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 # Store the original directory at the very beginning
 ORIGINAL_DIR="$(pwd)"
 
@@ -40,14 +72,30 @@ echo -e "${BLUE}📋 Installation information:${NC}"
 echo -e "   • Source repo: ${YELLOW}$REPO_URL${NC}"
 echo -e "   • Destination: ${YELLOW}$ORIGINAL_DIR${NC}"
 echo -e "   • Content: ${YELLOW}Rules and configuration folders${NC}"
+if [[ "$UPDATE_MODE" == true ]]; then
+    echo -e "   • Mode: ${YELLOW}Update (existing files will be replaced)${NC}"
+elif [[ "$FORCE_UPDATE" == true ]]; then
+    echo -e "   • Mode: ${YELLOW}Force (no confirmation for conflicts)${NC}"
+else
+    echo -e "   • Mode: ${YELLOW}Interactive (will ask before replacing existing files)${NC}"
+fi
 echo ""
 
-# Ask for confirmation
-echo -e "${YELLOW}❓ Do you want to proceed with installing AI rules for Cursor? (y/N)${NC}"
-read -r confirm
-if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo -e "${RED}Installation cancelled by user.${NC}"
-    exit 0
+# Ask for confirmation unless force mode is enabled
+if [[ "$FORCE_UPDATE" == false ]]; then
+    echo -e "${YELLOW}❓ Do you want to proceed with installing AI rules for Cursor? (y/N)${NC}"
+    read -r confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo -e "${RED}Installation cancelled by user.${NC}"
+        exit 0
+    fi
+else
+    if [[ "$UPDATE_MODE" == true ]]; then
+        echo -e "${GREEN}✅ Running in update mode - proceeding automatically${NC}"
+    else
+        echo -e "${GREEN}✅ Running in force mode - proceeding automatically${NC}"
+    fi
+    echo ""
 fi
 
 # Create temporary directory
@@ -104,22 +152,36 @@ while IFS= read -r -d '' item; do
         item_name=$(basename "$item")
         target_path="$ORIGINAL_DIR/$item_name"
         
+        # Track if this is an update
+        IS_UPDATE=false
+        
         # Check if item already exists
         if [[ -e "$target_path" ]]; then
-            echo -e "${YELLOW}⚠️  $item_name already exists. Replace? (y/N)${NC}"
-            read -r replace
-            if [[ ! "$replace" =~ ^[Yy]$ ]]; then
-                echo -e "   ⏭️  $item_name skipped."
-                ((CONFLICTS++))
-                continue
+            IS_UPDATE=true
+            if [[ "$FORCE_UPDATE" == true ]]; then
+                echo -e "${YELLOW}🔄 $item_name already exists - updating...${NC}"
+                # Remove existing item before copying
+                rm -rf "$target_path"
+            else
+                echo -e "${YELLOW}⚠️  $item_name already exists. Replace? (y/N)${NC}"
+                read -r replace
+                if [[ ! "$replace" =~ ^[Yy]$ ]]; then
+                    echo -e "   ⏭️  $item_name skipped."
+                    ((CONFLICTS++))
+                    continue
+                fi
+                # Remove existing item before copying
+                rm -rf "$target_path"
             fi
-            # Remove existing item before copying
-            rm -rf "$target_path"
         fi
         
         # Copy the item (file or directory)
         if cp -r "$item" "$target_path" 2>/dev/null; then
-            echo -e "${GREEN}   ✅ $item_name installed${NC}"
+            if [[ "$IS_UPDATE" == true ]]; then
+                echo -e "${GREEN}   ✅ $item_name updated${NC}"
+            else
+                echo -e "${GREEN}   ✅ $item_name installed${NC}"
+            fi
             ((COPIED_ITEMS++))
         else
             echo -e "${RED}   ❌ Failed to install $item_name${NC}"
